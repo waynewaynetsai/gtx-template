@@ -1,5 +1,8 @@
 {
   "name": "gtx-template",
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "0.9.0",
   "description": "Elegant mirco template engine for open source devtool",
   "keywords": [
@@ -7,7 +10,13 @@
     "engine",
     "ejs"
   ],
-  "main": "index.js",
+  "files": [
+    "lib",
+    "es6"
+  ],
+  "main": "lib/index.js",
+  "module": "es6/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "lint": "eslint . --ext .ts",
     "build:": "tsc -p tsconfig.json",
