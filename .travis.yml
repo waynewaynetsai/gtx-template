@@ -3,20 +3,15 @@ language: node_js
 node_js:
   - 10
 
-cache:
-  yarn: true
-  directories: 
-    - node_modules
-
 install:
-  - yarn
+  - npm ci
 
 jobs:
   include:
     - stage: release
       node_js: lts/*
       # Advanced: optionally overwrite your default `script` step to skip the tests
-      script: yarn prepare
+      script: npm run prepare
       deploy:
         provider: script
         skip_cleanup: true
