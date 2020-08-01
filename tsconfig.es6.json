@@ -1,0 +1,11 @@
+{
+ "extends": "./tsconfig.json",
+ "compilerOptions": {
+  "declaration": true,
+  "outDir": "./es6",
+  "module": "es6",
+  "target": "es6",
+ },
+ // https://github.com/microsoft/TypeScript/issues/14538
+ "exclude": ["**/*.d.ts"]
+}

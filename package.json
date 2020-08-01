@@ -1,0 +1,47 @@
+{
+  "name": "gtx-template",
+  "version": "0.9.0",
+  "description": "Elegant mirco template engine for open source devtool",
+  "keywords": [
+    "template",
+    "engine",
+    "ejs"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint . --ext .ts",
+    "build:": "tsc -p tsconfig.json",
+    "build:es6": "tsc -p tsconfig.es6.json",
+    "build:commonjs": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build:commonjs && npm run build:es6",
+    "release": "semantic-release-cli",
+    "test": "echo \"testing!\"",
+    "semantic-release": "semantic-release"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShangWeiTsai/gtx-template.git"
+  },
+  "author": "Wayne Tsai",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ShangWeiTsai/gtx-template/issues"
+  },
+  "homepage": "https://github.com/ShangWeiTsai/gtx-template#readme",
+  "dependencies": {
+    "source-map": "^0.7.3"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "^5.0.1",
+    "@semantic-release/git": "^9.0.0",
+    "@types/jest": "^26.0.7",
+    "@typescript-eslint/eslint-plugin": "^3.7.1",
+    "@typescript-eslint/parser": "^3.7.1",
+    "eslint": "^7.5.0",
+    "jest": "^26.1.0",
+    "semantic-release": "^17.1.1",
+    "ts-jest": "^26.1.4",
+    "ts-node": "8.10.2",
+    "typescript": "^3.9.7"
+  }
+}

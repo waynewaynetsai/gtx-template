@@ -1,0 +1,24 @@
+{
+ "compileOnSave": false,
+ "compilerOptions": {
+   "allowSyntheticDefaultImports": true,
+   "baseUrl": "./src",
+   "outDir": "./lib",
+   "sourceMap": true,
+   "declaration": false,
+   "downlevelIteration": true,
+   "experimentalDecorators": true,
+   "target": "es5",
+   "module":"commonjs",
+   "moduleResolution": "node",
+   "importHelpers": true,
+   "typeRoots": [
+     "node_modules/@types"
+   ],
+   "lib": [
+     "ES2015",
+     "es2018",
+     "dom"
+   ],
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "plugins": [
+  ["@semantic-release/commit-analyzer", {
+   "preset": "angular",
+   "releaseRules": [{
+     "type": "smfeat",
+     "release": "patch"
+    }]
+  }],
+  "@semantic-release/release-notes-generator",
+  "@semantic-release/changelog",
+  "@semantic-release/npm",
+  "@semantic-release/git"
+ ]
+}
