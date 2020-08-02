@@ -1,3 +1,1 @@
-console.log('Hello World');
-
-console.log('Hello World-2');
+export * from './compiler/compiler';
