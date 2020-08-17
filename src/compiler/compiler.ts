@@ -1,12 +1,19 @@
 import {
-  ReadedInfo, ReSettings,
-  Parsed, Tokenized, SyntaxNode, CompileOption,
-  DelimiterOptions, optionREMapper, ReadedOptions, CustomDelimiterOption
+  ReadedInfo,
+  Parsed,
+  Tokenized,
+  SyntaxNode,
+  DelimiterOptions,
+  optionREMapper,
+  ReadedOptions,
+  CustomDelimiterOption
 } from '../model';
 import { reSettings } from './resettings';
 import { matcher, pathMatcher } from './matcher';
-import { pipe, omitProps, pluck, map, tap, isString } from './utils';
+import { pipe, omitProps, pluck, map, tap, isString, iif } from './utils';
 import { defaultOptions } from './default';
+import { SourceNode } from 'source-map';
+import * as path from 'path';
 
 const nextLineCount = (str: string) => str.split('\n').length - 1;
 
@@ -92,8 +99,8 @@ const parser = (readed: ReadedInfo) => (tokens: Tokenized) => {
   };
 };
 
-const contentConverter = (readed: ReadedInfo) => async (parsed: Parsed) => {
-  const join = parsed.syntaxNodes.map(async (info: any) => {
+const contentConverter = (readed: ReadedInfo) => (parsed: Parsed) => {
+  const join = parsed.syntaxNodes.map((info: any) => {
     try {
       return matcher[info.type](info);
     } catch (err) {
@@ -104,7 +111,7 @@ const contentConverter = (readed: ReadedInfo) => async (parsed: Parsed) => {
       `);
     }
   });
-  const converted = (await Promise.all(join)).join('\n');
+  const converted = join.join('\n');
   return `let __data = data || (data = {});\n
           let __tpl = '';\n
           with (__data){
@@ -113,8 +120,42 @@ const contentConverter = (readed: ReadedInfo) => async (parsed: Parsed) => {
           `;
 };
 
-const pathConverter = (readed: ReadedInfo) => async (parsedpath: Parsed) => {
-  const join = parsedpath.syntaxNodes.map(async (info: any) => {
+const contentWithSourceMap = (readed: ReadedInfo) => (parsed: Parsed) => {
+  const sourceUrl = readed.path;
+  const head = new SourceNode(1, 0, sourceUrl, `
+    let __data = data || (data = {});\n
+    let __tpl = '';\n
+    with (__data){\n`);
+  const body = parsed.syntaxNodes.reduce((acc, curr) => {
+    const lines = curr.content.split('\n');
+    return lines.reduce((accNode, currLine, i) => {
+      return accNode.add(
+        new SourceNode(
+          curr.start.line + i,
+          (i === 0) ? curr.start.column : 0, sourceUrl, `
+          ${matcher[curr.type]({ curr, content: currLine })}
+          ${(i === lines.length - 1 ? '' : '\n')}
+        `)
+      )
+    }, acc);
+  }, head);
+  const lastNode = parsed.syntaxNodes[parsed.syntaxNodes.length - 1];
+  const tail = new SourceNode(lastNode.start.line, lastNode.end.column, sourceUrl, ` }\n
+      return __tpl;\n
+  `);
+  const nodes = body.add(tail);
+  const code = nodes.toStringWithSourceMap({
+    file: readed.filename,
+    sourceRoot: path.dirname(readed.path),
+  });
+  code.map.setSourceContent(readed.path, readed.content);
+  return code.code
+    + '\n//# sourceMappingURL=data:application/json;base64,'
+    + Buffer.from(code.map.toString()).toString('base64');
+};
+
+const pathConverter = (readed: ReadedInfo) => (parsedpath: Parsed) => {
+  const join = parsedpath.syntaxNodes.map((info: any) => {
     try {
       return pathMatcher[info.type](info);
     } catch (err) {
@@ -125,23 +166,28 @@ const pathConverter = (readed: ReadedInfo) => async (parsedpath: Parsed) => {
       `);
     }
   });
-  const converted = (await Promise.all(join)).join('\n');
+  const converted = join.join('\n');
   return `let __data = data || (data = {});\n
           let __tpl = '';\n
           with (__data) {\n
             ${converted}
           }\n
-          return __tpl;
+            return __tpl;\n
+          }\n
         `;
 };
 
-const contentTemplate = (readed: ReadedInfo) => pipe<ReadedInfo, Promise<string>>(
+const contentTemplate = (readed: ReadedInfo) => pipe<ReadedInfo, string>(
   tokenize,
   parser(readed),
-  contentConverter(readed)
+  iif(
+    _ => readed.options.debug,
+    contentWithSourceMap(readed),
+    contentConverter(readed)
+  ),
 )(readed);
 
-const pathTemplate = (readed: ReadedInfo) => pipe<ReadedInfo, Promise<string>>(
+const pathTemplate = (readed: ReadedInfo) => pipe<ReadedInfo, string>(
   tokenize,
   parser(readed),
   pathConverter(readed)
@@ -154,8 +200,7 @@ const templates = {
 
 const delimiters = (obj) => Object.values(obj).reduce((acc: string[], curr: string[]) => [...curr, ...acc], [] as string[]);
 
-const delimiterTypes = pipe<ReadedOptions, { type: string; prefix?: string; }[]>(
-  pluck<CompileOption>('delimiter'),
+const delimiterTypes = pipe<DelimiterOptions, { type: string; prefix?: string; }[]>(
   omitProps<DelimiterOptions>((_, v) => !v.enable),
   map<DelimiterOptions>((k, v) => optionREMapper[k].map(type => ({
     type, prefix: (v as CustomDelimiterOption).prefix
@@ -163,37 +208,30 @@ const delimiterTypes = pipe<ReadedOptions, { type: string; prefix?: string; }[]>
   delimiters,
 );
 
-const funcFactory = async (readed: ReadedInfo, type: 'path' | 'content') => {
-  const funcBody = await templates[type]({
-    ...readed,
-    options: {
-      ...readed.options,
-      delimiters: delimiterTypes(readed.options)
-    }
-  });
+const compiler = (type: 'content' | 'path') => (template: string, readed: ReadedInfo) => {
+  const { options } = readed;
+  const delimiterOptions = {
+    ...defaultOptions.delimiter,
+    ...(options || { delimiter: {} }).delimiter
+  };
+  const compileOptions: ReadedOptions = {
+    ...defaultOptions,
+    ...(options || { delimiter: {} }),
+    delimiter: delimiterOptions,
+    delimiters: delimiterTypes(delimiterOptions)
+  };
   try {
-    return new Function('data', funcBody);
+    return new Function('data', templates[type]({
+      ...readed,
+      content: template,
+      options: compileOptions
+    }));
   } catch (e) {
     throw new Error(`[parsed template error]: incorrect input
-        \npath:${readed.path}
-        \n[error]: ${e}`);
+          \npath:${readed.path}
+          \n[error]: ${e}`);
   }
 };
-
-const compiler = (type: 'content' | 'path') => (template: string, readed: ReadedInfo) =>
-  async <T extends { [key: string]: any }>(data: T) => {
-    const { options } = readed;
-    const compileOptions: CompileOption = {
-      ...defaultOptions,
-      ...(options || { delimiter: {} }),
-      delimiter: {
-        ...defaultOptions.delimiter,
-        ...(options || { delimiter: {} }).delimiter
-      },
-    };
-    const compileFunc = await funcFactory({ content: template, ...readed, type, options: compileOptions }, type);
-    return compileFunc({ ...data });
-  };
 
 export const contentCompiler = compiler('content');
 

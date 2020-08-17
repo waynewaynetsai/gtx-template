@@ -16,6 +16,10 @@ export const tap = <T>(fn: (arg: T) => any) => (x: T) => { fn(x); return x; };
 
 export const pluck = <T extends ObjectLike>(prop: keyof T) => (obj: T) => obj[prop];
 
+export const alt = <T>(fnA: Function, fnB: Function) => (val: T) => fnA(val) || fnB(val); 
+
+export const iif = <T>(predicate: (val: T) => boolean, ifBlockFn: Function, elseBlockFn: Function) =>  (val: T) => predicate(val) ? ifBlockFn(val) : elseBlockFn(val);
+
 export const omitPropsOrd = <T extends ObjectLike>(predicate: (key: keyof T, value: T[keyof T]) => boolean) => (obj: T) =>
   Object.entries(obj)
     .filter(([k, v]) => !predicate(k, v))

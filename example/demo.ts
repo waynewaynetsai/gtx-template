@@ -4,35 +4,33 @@ import { contentCompiler } from "../src/compiler/compiler";
 
 (async () => {
 
-    const templ =  `
-      @-- dynamic conent from user input --@
+    const templ =  `@-- dynamic conent from user input --@
 
-      <p> Hello @{{ username }} ! </p>
-
-      @-- dynamic conent from condition --@
-
-      @if(!username)
-      <p> Show [ if ] Block! </p>
-      @elseif(username==='anyname')
-      <p> Show [ else if ] Block! </p>
-      @else
-      <p> Show [ else ] Block! </p>
-      @endif
-
-      @-- dynamic conent from forloop --@
-
-      @for(let item of items)
-      <p> name: @{{item.name}} </p>
-      @endfor
-
-      @for(let key in items)
-      <p> @{{ key }} - @{{items[key].name}} </p>
-      @endfor
-    `;
+    <p> Hello @{{ username }} ! </p>
+    
+    @-- dynamic conent from condition --@
+    
+    @if(!username)
+    <p> Show [ if ] Block! </p>
+    @elseif(username==='anyname')
+    <p> Show [ else if ] Block! </p>
+    @else
+    <p> Show [ else ] Block! </p>
+    @endif
+    
+    @-- dynamic conent from forloop --@
+    
+    @for(let item of items)
+    <p> name: @{{item.name}} </p>
+    @endfor
+    
+    @for(let key in items)
+    <p> @{{ key }} - @{{items[key].name}} </p>
+    @endfor`;
 
     const template = contentCompiler(templ, {
-    path: 'your_dirname/test.ts',
-    filename: 'test.ts',
+    path: `${__dirname}/demo.template`,
+    filename: 'demo.template',
     options: {
       delimiter: {
         interpolate: {
@@ -41,11 +39,12 @@ import { contentCompiler } from "../src/compiler/compiler";
         escape: {
           enable: false
         }
-      }
+      },
+      debug: true
     }
     });
 
-  const compiled = await template({
+  const compiled = template({
     username: 'Wayne',
     items: [
         {
@@ -59,5 +58,5 @@ import { contentCompiler } from "../src/compiler/compiler";
         }
     ]
   });
-
+  console.log(compiled);
 })();
